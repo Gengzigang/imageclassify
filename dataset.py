@@ -1,9 +1,8 @@
 import cv2
 import os
 import glob
-from sklearn.utils import shuffle
 import numpy as np
-
+np.random.seed(1)
 
 def load_train(train_path, image_size, classes):
     images = []
@@ -13,10 +12,11 @@ def load_train(train_path, image_size, classes):
 
     print('Going to read training images')
 
-    for fields in classes:   
-        index = classes.index(fields)
-        print('Now going to read {} files (Index: {})'.format(fields, index))
-        path = os.path.join(train_path, fields,'images','*.JPEG')
+    #for index in range(len(classes)):
+    for index in range(0,classes):  
+        field = index + 1
+        print('Now going to read {} files (Index: {})'.format(field, index))
+        path = os.path.join(train_path, str(field),'images','*.JPEG')
         files = glob.glob(path)
         for fl in files:
             image = cv2.imread(fl)
@@ -24,12 +24,12 @@ def load_train(train_path, image_size, classes):
             image = image.astype(np.float32)
             image = np.multiply(image, 1.0 / 255.0)
             images.append(image)
-            label = np.zeros(len(classes))
+            label = np.zeros(classes)
             label[index] = 1.0
             labels.append(label)
             flbase = os.path.basename(fl)
             img_names.append(flbase)
-            cls.append(fields)
+            cls.append(field)
         
     images = np.array(images)
     labels = np.array(labels)
@@ -96,7 +96,12 @@ def read_train_sets(train_path, image_size, classes, validation_size):
   data_sets = DataSets()
 
   images, labels, img_names, cls = load_train(train_path, image_size, classes)
-  images, labels, img_names, cls = shuffle(images, labels, img_names, cls)  
+  permutation = np.random.permutation(images.shape[0])
+  print(permutation[1])
+  images = images[permutation]
+  labels = labels[permutation]
+  img_names = img_names[permutation]
+  cls = cls[permutation]
 
   if isinstance(validation_size, float):
     validation_size = int(validation_size * images.shape[0])

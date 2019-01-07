@@ -1,62 +1,113 @@
-import tensorflow as tf
 import numpy as np
-import os,glob,cv2
-import sys,argparse
-sum = 0
-for i in range(0,100):
+import dataset
+import os
+import time
+from myCNN import CNN
+np.random.seed(1)
 
-    filename = './test/n02085620_'+str(i)+'.JPEG'
-    #dir_path = os.path.dirname(os.path.realpath(__file__))
-    #image_path=sys.argv[1] 
-    #filename = dir_path +'/' +image_path
-    image_size=64
-    num_channels=3
-    images = []
-    # Reading the image using OpenCV
-    image = cv2.imread(filename)
-    # Resizing the image to our desired size and preprocessing will be done exactly as done during training
-    image = cv2.resize(image, (image_size, image_size),0,0, cv2.INTER_LINEAR)
+num_classes = 20
 
-    images.append(image)
-    images = np.array(images, dtype=np.uint8)
-    images = images.astype('float32')
-    images = np.multiply(images, 1.0/255.0) 
-    #The input to the network is of shape [None image_size image_size num_channels]. Hence we reshape.
-    x_batch = images.reshape(1, image_size,image_size,num_channels)
+validation_size = 0.2
+img_size = 64
+classes = 20
 
-    ## Let us restore the saved model 
-    sess = tf.Session()
-    # Step-1: Recreate the network graph. At this step only graph is created.
-    saver = tf.train.import_meta_graph('./mymodel.meta')
-    # Step-2: Now let's load the weights saved using the restore method.
-    saver.restore(sess, tf.train.latest_checkpoint('./'))
+classes = os.listdir('dataset')
+num_classes = len(classes)
 
-    # Accessing the default graph which we have restored
-    graph = tf.get_default_graph()
+validation_size = 0.2
+img_size = 64
+num_channels = 3
+train_path='dataset'
+beta = 0.01
 
-    # Now, let's get hold of the op that we can be processed to get the output.
-    # In the original network y_pred is the tensor that is the prediction of the network
-    y_pred = graph.get_tensor_by_name("y_pred:0")
+data = dataset.read_train_sets(train_path, img_size, num_classes, validation_size=validation_size)
 
-    ## Let's feed the images to the input placeholders
-    x= graph.get_tensor_by_name("x:0") 
-    y_true = graph.get_tensor_by_name("y_true:0") 
-    y_test_images = np.zeros((1, 20)) 
+print("Complete reading input data. Will Now print a snippet of it")
+print("Number of files in Training-set:{}".format(len(data.train.labels)))
+print("Number of files in Validation-set:{}".format(len(data.valid.labels)))
+
+learning_rate = 0.01
+x1 = CNN(learning_rate)
+x1.load(1)
+
+x2 = CNN(learning_rate)
+x2.load(2)
+
+x3 = CNN(learning_rate)
+x3.load(3)
+
+x4 = CNN(learning_rate)
+x4.load(4)
+
+x5 = CNN(learning_rate)
+x5.load(5)
+
+sum_size = 0
+count_size = 0
+
+while sum_size < 2000:
+    #f = np.random.randint(0,2000)
+
+    image = data.valid.images[sum_size]
+    image_label = data.valid.labels[sum_size]
+    image_label = image_label.reshape((1,20))
+    image = image.reshape((1,64,64,3))
+    batch = image.shape[0]
+
+    pred = np.zeros(20)
+    h2 = x1.forward(image,image_label)
+    pred[np.argmax(h2)] = pred[np.argmax(h2)] + 1
+    h2 = x2.forward(image,image_label)
+    pred[np.argmax(h2)] = pred[np.argmax(h2)] + 1
+    h2 = x3.forward(image,image_label)
+    pred[np.argmax(h2)] = pred[np.argmax(h2)] + 1
+    h2 = x4.forward(image,image_label)
+    pred[np.argmax(h2)] = pred[np.argmax(h2)] + 1
+    h2 = x5.forward(image,image_label)
+    pred[np.argmax(h2)] = pred[np.argmax(h2)] + 1
+
+    pred1 = np.argmax(pred)
+    pred[np.argmax(pred)] = 0
+    pred2 = np.argmax(pred)
+
+    label = np.argmax(image_label)
+    print(h2[0,pred1])
+    if pred1 == label:
+        count_size += 1
+    elif pred2 == label:
+        count_size += 1
+    sum_size += 1
+    #print(count_size / sum_size)
+
+print("===============")
+print(count_size / sum_size)
 
 
-    ### Creating the feed_dict that is required to be fed to calculate y_pred 
-    feed_dict_testing = {x: x_batch, y_true: y_test_images}
-    result=sess.run(y_pred, feed_dict=feed_dict_testing)
-    # result is of this format [probabiliy_of_rose probability_of_sunflower]
-    maxi = 0;
 
-    max = result[0][0];
 
-    for i in range(1,20):
-        if max<result[0][i]:
-            max = result[0][i]
-            maxi = i
-    if maxi == 9:
-        sum = sum+1
-    print(max)
-print(sum)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    #if(i == 8000):
+    #    print(np.mean(loss))
+    #    i = 0
+    #f = np.random.choice(8000,16)
+    #image = data.train.images[0:2] # batch * 64 * 64 * 3
+    #image_label = data.train.labels[0:2] # batch * 3
+    #grad_w1,grad_b1,grad_w2,grad_b2,loss[i] = x.calculate_grad(image,image_label)
+    #x.backward(grad_w1,grad_b1,grad_w2,grad_b2)
+    #x.forward(image,image_label)
+    #i = i + 1
